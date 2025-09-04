@@ -1,0 +1,31 @@
+# Python
+__pycache__/
+*.pyc
+.venv/
+.env
+.env.*
+*.sqlite3
+
+# Node/Frontend (si aplica)
+node_modules/
+.next/
+dist/
+build/
+
+# OS / IDE
+.DS_Store
+.vscode/
+.idea/
+
+# Coverage / reports
+.coverage
+htmlcov/
+coverage.xml
+
+# Docker
+*.local.yml
+
+# Secrets comunes
+*.key
+*.pem
+secrets/*.json

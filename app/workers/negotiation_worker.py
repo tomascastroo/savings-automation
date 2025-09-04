@@ -1,0 +1,1 @@
+# Negotiation orchestration worker stub.
