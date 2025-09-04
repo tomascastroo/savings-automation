@@ -4,24 +4,34 @@
 - Docker y docker-compose
 - (Opcional) Tesseract y Poppler si corrés fuera de Docker
 
-## Variables de entorno (docker-compose ya define valores por defecto)
-- `DATABASE_URL=postgresql+asyncpg://savings:savings@db:5432/savings`
-- `REDIS_URL=redis://redis:6379/0`
-- `JWT_SECRET=dev-secret-change-me`
-- `ALLOWED_ORIGINS=http://localhost:3000,http://localhost:5173`
-- `PAYMENT_GATEWAY=stripe|mp`
-- `OPENAI_API_KEY` (opcional, si no está se mockea la respuesta)
-- `STORAGE_DIR=/data`
-
-## Levantar el stack
+## Variables de Entorno
+Este proyecto usa un archivo `.env` para la configuración. Copia el `.env.example` a `.env` y ajústalo según sea necesario.
 ```bash
-docker-compose up --build
+cp .env.example .env
 ```
 
-Eso levanta:
-- API FastAPI en `http://localhost:8000`
-- Postgres en `localhost:5433`
-- Redis en `localhost:6379`
+## Levantar el stack
+Asegúrate de tener Docker con Compose V2 (comando `docker compose`) instalado.
+```bash
+# Levanta todos los servicios en segundo plano
+docker compose up --build -d
+```
+Una vez levantado, la API estará disponible en `http://localhost:8000`.
+
+## Migraciones de Base de Datos
+Este proyecto usa Alembic para gestionar las migraciones de la base de datos.
+
+### Aplicar migraciones
+Para llevar la base de datos a la última versión, ejecuta:
+```bash
+docker compose exec api alembic upgrade head
+```
+
+### Crear una nueva migración
+Cuando hagas cambios en los modelos de `app/models/*.py`, crea una nueva migración:
+```bash
+docker compose exec api alembic revision --autogenerate -m "Un mensaje descriptivo del cambio"
+```
 
 ## Endpoints básicos (curl)
 ### Signup
@@ -70,7 +80,6 @@ curl -s http://localhost:8000/dashboard/me -H "Authorization: Bearer $TOKEN"
 - OCR con Tesseract (PDFs soportados con `pdf2image`)
 
 ## Roadmap (TODO)
-- Migraciones con Alembic
 - CRUD para Providers y Services
 - Integración real Stripe/MercadoPago
 - Bot WhatsApp (WABA)

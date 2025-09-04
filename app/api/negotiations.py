@@ -71,4 +71,5 @@ async def confirm(neg_id: int, body: ConfirmRequest, db: AsyncSession = Depends(
     else:
         fee.payment_status = PaymentStatus.failed
     await db.commit()
+    await db.refresh(fee)
     return {"fee_id": fee.id, "fee_amount": fee.fee_amount, "payment_status": fee.payment_status.value, "payment_ref": fee.payment_ref}

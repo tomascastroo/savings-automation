@@ -42,4 +42,6 @@ async def setup_payment(body: PaymentSetupRequest, db: AsyncSession = Depends(ge
     pa = PaymentAuthorization(user_id=user.id, payment_method_id=pm.id, scope="success_fee", status="authorized")
     db.add(pa)
     await db.commit()
+    await db.refresh(pm)
+    await db.refresh(pa)
     return {"payment_method_id": pm.id, "authorization_id": pa.id, "status": pa.status}

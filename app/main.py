@@ -1,8 +1,7 @@
 from fastapi import FastAPI
 from fastapi.middleware.cors import CORSMiddleware
-from .utils.logging import configure_logging, logger
+from .utils.logging import configure_logging
 from .config import settings
-from .database import engine, Base
 from .api import auth as auth_router
 from .api import bills as bills_router
 from .api import negotiations as negotiations_router
@@ -20,13 +19,6 @@ app.add_middleware(
     allow_methods=["*"],
     allow_headers=["*"],
 )
-
-@app.on_event("startup")
-async def on_startup():
-    # Create tables automatically
-    async with engine.begin() as conn:
-        await conn.run_sync(Base.metadata.create_all)
-    logger.info("startup_completed")
 
 # Routers
 app.include_router(auth_router.router)
