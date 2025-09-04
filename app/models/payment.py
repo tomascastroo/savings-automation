@@ -26,6 +26,7 @@ class PaymentStatus(str, enum.Enum):
     pending = "pending"
     paid = "paid"
     failed = "failed"
+    refunded = "refunded"
 
 class Service(Base):
     __tablename__ = "services"

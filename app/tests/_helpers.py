@@ -7,15 +7,26 @@ from sqlalchemy.ext.asyncio import AsyncSession
 from app.models.provider import Provider
 from app.models.payment import Service, ServiceCategory
 
-async def ensure_provider_and_service(db: AsyncSession, user_id: int) -> tuple[int, int]:
+from typing import Optional, Dict, Any
+
+async def ensure_provider_and_service(
+    db: AsyncSession,
+    user_id: int,
+    provider_kwargs: Optional[Dict[str, Any]] = None
+) -> tuple[int, int]:
     """
     Ensures a provider and a unique service for that user exist,
     using the provided test database session.
     """
+    provider_kwargs = provider_kwargs or {}
+    provider_name = provider_kwargs.get("name", "TelecomX")
+
     # Reuse provider by name
-    p = await db.scalar(select(Provider).where(Provider.name == "TelecomX"))
+    p = await db.scalar(select(Provider).where(Provider.name == provider_name))
     if not p:
-        p = Provider(name="TelecomX", country="AR", website="https://telecomx.example")
+        # Provide default values and override with any kwargs
+        defaults = {"name": "TelecomX", "country": "AR", "website": "https://telecomx.example"}
+        p = Provider(**{**defaults, **provider_kwargs})
         db.add(p)
         await db.flush()
 
