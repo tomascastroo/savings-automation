@@ -42,10 +42,19 @@ async def _infer_confirm_body_from_openapi(client: httpx.AsyncClient, negotiatio
     except Exception:
         return None
 
+from sqlalchemy.ext.asyncio import AsyncSession
+from app.services.ocr import OcrResult
+
 @pytest.mark.asyncio
-async def test_negotiate_and_confirm(auth_client: httpx.AsyncClient, auth: dict):
-    user_id = int(auth["user"]["id"])
-    _, service_id = await ensure_provider_and_service(user_id=user_id)
+async def test_negotiate_and_confirm(auth_client: httpx.AsyncClient, db_session: AsyncSession, monkeypatch):
+    # Mock OCR to avoid dependency on tesseract/poppler in test environment
+    async def mock_extract_text(*args, **kwargs):
+        return OcrResult(text="Amount due: $100.00", pages=1)
+    monkeypatch.setattr("app.services.ocr.TesseractOcrEngine.extract_text", mock_extract_text)
+
+    # The auth_client fixture creates user with id=1, who is admin
+    user_id = 1
+    _, service_id = await ensure_provider_and_service(db=db_session, user_id=user_id)
 
     # Ensure we have at least one bill (some implementations require it before negotiating)
     img = make_dummy_image_bytes()
@@ -63,10 +72,8 @@ async def test_negotiate_and_confirm(auth_client: httpx.AsyncClient, auth: dict)
     assert neg_id, f"Negotiation id not found in response: {neg}"
 
     # Confirm
-    body = await _infer_confirm_body_from_openapi(auth_client, neg_id)
-    if body is None:
-        pytest.skip("Could not infer confirm body from OpenAPI; skipping confirm step.")
-    r = await auth_client.post(f"/negotiations/{neg_id}/confirm", json=(body or {}))
+    confirm_body = {"new_amount": 8000.0}
+    r = await auth_client.post(f"/negotiations/{neg_id}/confirm", json=confirm_body)
     # Accept common statuses
     assert r.status_code in (200, 201, 202), f"confirm failed: {r.status_code} {r.text}"
     data = r.json()

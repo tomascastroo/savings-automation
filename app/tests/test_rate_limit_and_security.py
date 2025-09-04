@@ -7,11 +7,20 @@ async def test_invalid_token_rejected(anon_client: httpx.AsyncClient):
     r = await anon_client.get("/dashboard/me", headers={"Authorization": "Bearer invalid.token"})
     assert r.status_code in (401, 403)
 
+from sqlalchemy.ext.asyncio import AsyncSession
+from app.services.ocr import OcrResult
+
 @pytest.mark.asyncio
-async def test_rate_limit_provider_account(auth_client: httpx.AsyncClient, auth: dict):
-    user_id = int(auth["user"]["id"])
+async def test_rate_limit_provider_account(auth_client: httpx.AsyncClient, db_session: AsyncSession, monkeypatch):
+    # Mock OCR to avoid dependency on tesseract/poppler in test environment
+    async def mock_extract_text(*args, **kwargs):
+        return OcrResult(text="Amount due: $99.99", pages=1)
+    monkeypatch.setattr("app.services.ocr.TesseractOcrEngine.extract_text", mock_extract_text)
+
+    # The auth_client fixture creates user with id=1
+    user_id = 1
     # Create a single provider account and attempt to negotiate twice
-    _, sid = await ensure_provider_and_service(user_id=user_id)
+    _, sid = await ensure_provider_and_service(db=db_session, user_id=user_id)
     img = make_dummy_image_bytes()
     files = {"file": ("bill.png", img, "image/png")}
     r = await auth_client.post("/bills", params={"service_id": sid}, files=files)
