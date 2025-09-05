@@ -1,105 +1,96 @@
+import os
 import asyncio
-import httpx
-import pytest
-import pytest_asyncio
-import fakeredis.aioredis
+import json
+import shutil
+import tempfile
+import contextlib
 from typing import AsyncGenerator
 
-from sqlalchemy.ext.asyncio import create_async_engine, AsyncSession
-from sqlalchemy.orm import sessionmaker
+import pytest
+import anyio
+from httpx import AsyncClient
+from sqlalchemy.ext.asyncio import create_async_engine, AsyncSession, async_sessionmaker
+from sqlalchemy.pool import NullPool
 
 from app.main import app
 from app.database import Base
 from app.dependencies import get_db
 
-# Use an in-memory SQLite database for testing
-TEST_DATABASE_URL = "sqlite+aiosqlite:///:memory:"
+TEST_STORAGE = tempfile.mkdtemp(prefix="sa-tests-")
+os.environ.setdefault("STORAGE_DIR", TEST_STORAGE)
+os.environ.setdefault("JWT_SECRET", "test-secret")
 
-engine = create_async_engine(TEST_DATABASE_URL, echo=False)
-TestingSessionLocal = sessionmaker(
-    autocommit=False, autoflush=False, bind=engine, class_=AsyncSession
+TEST_DB_URL = "sqlite+aiosqlite:///:memory:"
+
+engine = create_async_engine(
+    TEST_DB_URL, echo=False, poolclass=NullPool, future=True,
 )
+SessionLocal = async_sessionmaker(bind=engine, class_=AsyncSession, expire_on_commit=False)
 
-async def override_get_db() -> AsyncGenerator[AsyncSession, None]:
-    """
-    Dependency override for getting a test database session.
-    """
-    async with TestingSessionLocal() as session:
-        yield session
+@pytest.fixture(scope="session")
+def anyio_backend():
+    return "asyncio"
 
-# Apply the override for the test environment
-app.dependency_overrides[get_db] = override_get_db
-
-@pytest_asyncio.fixture(autouse=True)
-def mock_redis(monkeypatch):
-    """
-    Mocks the redis client for all tests to avoid real network calls.
-    We patch the function in all namespaces where it's imported.
-    """
-    fake_redis_client = fakeredis.aioredis.FakeRedis(decode_responses=True)
-    monkeypatch.setattr("app.utils.redis_client.get_redis", lambda: fake_redis_client)
-    monkeypatch.setattr("app.services.rate_limit.get_redis", lambda: fake_redis_client)
-    monkeypatch.setattr("app.services.payment.get_redis", lambda: fake_redis_client)
-
-
-@pytest_asyncio.fixture(autouse=True)
-def override_storage_dir(monkeypatch, tmp_path):
-    """
-    For the duration of a test, point the storage directory to a temporary path
-    to avoid permission errors and keep the test environment clean.
-    """
-    from app.config import settings
-    monkeypatch.setattr(settings, "storage_dir", str(tmp_path))
-
-@pytest_asyncio.fixture(scope="function", autouse=True)
-async def auto_setup_database():
-    """
-    Automatically creates and drops database tables for each test function,
-    ensuring a clean state and test isolation.
-    """
+@pytest.fixture(scope="session")
+async def _create_test_schema():
     async with engine.begin() as conn:
         await conn.run_sync(Base.metadata.create_all)
     yield
     async with engine.begin() as conn:
         await conn.run_sync(Base.metadata.drop_all)
 
-@pytest_asyncio.fixture(scope="function")
-async def db_session() -> AsyncGenerator[AsyncSession, None]:
-    """
-    Provides a database session to tests that need to interact with the DB
-    directly (e.g., for setting up state with helper functions).
-    """
-    async with TestingSessionLocal() as session:
+@contextlib.asynccontextmanager
+async def _override_db():
+    async with SessionLocal() as session:
         yield session
 
-@pytest_asyncio.fixture
-async def anon_client() -> httpx.AsyncClient:
-    """
-    An anonymous (non-authenticated) test client that talks to the in-memory app.
-    """
-    transport = httpx.ASGITransport(app=app)
-    async with httpx.AsyncClient(transport=transport, base_url="http://test") as c:
-        yield c
+@pytest.fixture(autouse=True, scope="session")
+async def _override_dependencies(_create_test_schema):
+    app.dependency_overrides[get_db] = lambda: _override_db()
+    yield
+    app.dependency_overrides.pop(get_db, None)
 
-@pytest_asyncio.fixture
-async def auth_client(anon_client: httpx.AsyncClient) -> httpx.AsyncClient:
-    """
-    An authenticated test client.
-    Creates a user (ID=1, so admin) and returns a client with their token.
-    """
-    # Signup
-    email = "admin@example.com"
-    password = "secret123"
-    signup_response = await anon_client.post("/auth/signup", json={"email": email, "password": password})
-    assert signup_response.status_code == 200
+@pytest.fixture(scope="session", autouse=True)
+def _cleanup_storage():
+    try:
+        yield
+    finally:
+        shutil.rmtree(TEST_STORAGE, ignore_errors=True)
 
-    # Login
-    login_response = await anon_client.post("/auth/login", json={"email": email, "password": password})
-    login_response.raise_for_status()
-    token = login_response.json()["access_token"]
+def _make_jwt():
+    import time, jwt
+    payload = {"sub": "1", "role": "admin", "exp": int(time.time()) + 3600}
+    return jwt.encode(payload, os.environ["JWT_SECRET"], algorithm="HS256")
 
-    # Return authenticated client
-    headers = {"Authorization": f"Bearer {token}"}
-    transport = httpx.ASGITransport(app=app)
-    async with httpx.AsyncClient(transport=transport, base_url="http://test", headers=headers) as c:
-        yield c
+@pytest.fixture
+def admin_auth_header():
+    return {"Authorization": f"Bearer {_make_jwt()}"}
+
+@pytest.fixture(autouse=True)
+def mock_ocr(monkeypatch):
+    for target in (
+        "app.services.ocr.extract_text",
+        "app.services.pdf.extract_text",
+        "app.lib.ocr.extract_text",
+    ):
+        try:
+            import importlib
+            module_path, func_name = target.rsplit(".", 1)
+            module = importlib.import_module(module_path)
+            if hasattr(module, func_name):
+                def _fake_extract_text(file_path: str):
+                    return {
+                        "text": "FAKE OCR TEXT\nprovider: Test Provider\namount: 10000",
+                        "pages": 1,
+                        "parsed": {"provider_hint": "Test Provider"},
+                    }
+                monkeypatch.setattr(module, func_name, _fake_extract_text)
+                break
+        except ModuleNotFoundError:
+            continue
+    yield
+
+@pytest.fixture
+async def async_client() -> AsyncGenerator[AsyncClient, None]:
+    async with AsyncClient(app=app, base_url="http://test") as client:
+        yield client
