@@ -1,6 +1,6 @@
 from sqlalchemy import Column, Integer, String, DateTime, Boolean, ForeignKey, Enum, Float, UniqueConstraint, JSON, Numeric
 from sqlalchemy.orm import relationship, Mapped, mapped_column
-from datetime import datetime, timezone
+from datetime import datetime
 import enum
 from ..database import Base
 
@@ -37,7 +37,7 @@ class Service(Base):
     provider_acct: Mapped[str] = mapped_column(String(128), nullable=False)
     alias: Mapped[str | None] = mapped_column(String(128))
     active: Mapped[bool] = mapped_column(Boolean, default=True)
-    created_at: Mapped[datetime] = mapped_column(DateTime, default=lambda: datetime.now(timezone.utc))
+    created_at: Mapped[datetime] = mapped_column(DateTime, default=datetime.utcnow)
 
     user = relationship("User", back_populates="services")
     provider = relationship("Provider")
@@ -49,7 +49,7 @@ class PaymentMethod(Base):
     provider: Mapped[str] = mapped_column(String(50), nullable=False)  # stripe|mp
     pm_token: Mapped[str] = mapped_column(String(255), nullable=False)
     status: Mapped[str] = mapped_column(String(32), default="active")
-    created_at: Mapped[datetime] = mapped_column(DateTime, default=lambda: datetime.now(timezone.utc))
+    created_at: Mapped[datetime] = mapped_column(DateTime, default=datetime.utcnow)
 
     user = relationship("User", back_populates="payment_methods")
 
@@ -60,7 +60,7 @@ class PaymentAuthorization(Base):
     payment_method_id: Mapped[int] = mapped_column(Integer, ForeignKey("payment_methods.id"))
     scope: Mapped[str] = mapped_column(String(64))  # e.g., "success_fee"
     status: Mapped[str] = mapped_column(String(32), default="authorized")
-    created_at: Mapped[datetime] = mapped_column(DateTime, default=lambda: datetime.now(timezone.utc))
+    created_at: Mapped[datetime] = mapped_column(DateTime, default=datetime.utcnow)
 
 class Saving(Base):
     __tablename__ = "savings"
@@ -80,7 +80,7 @@ class Fee(Base):
     fee_amount: Mapped[float] = mapped_column(Float, nullable=False)
     payment_status: Mapped[PaymentStatus] = mapped_column(Enum(PaymentStatus), default=PaymentStatus.pending)
     payment_ref: Mapped[str | None] = mapped_column(String(255))
-    created_at: Mapped[datetime] = mapped_column(DateTime, default=lambda: datetime.now(timezone.utc))
+    created_at: Mapped[datetime] = mapped_column(DateTime, default=datetime.utcnow)
     paid_at: Mapped[datetime | None] = mapped_column(DateTime, nullable=True)
 
 class AuditLog(Base):
@@ -92,4 +92,4 @@ class AuditLog(Base):
     action: Mapped[str] = mapped_column(String(64))
     data_before: Mapped[dict | None] = mapped_column(JSON, nullable=True)
     data_after: Mapped[dict | None] = mapped_column(JSON, nullable=True)
-    created_at: Mapped[datetime] = mapped_column(DateTime, default=lambda: datetime.now(timezone.utc))
+    created_at: Mapped[datetime] = mapped_column(DateTime, default=datetime.utcnow)

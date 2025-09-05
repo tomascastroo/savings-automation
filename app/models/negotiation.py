@@ -1,7 +1,7 @@
 from sqlalchemy import Column, Integer, String, DateTime, ForeignKey, Float, JSON, Enum, Text, Numeric
 from sqlalchemy.dialects.postgresql import JSONB
 from sqlalchemy.orm import relationship, Mapped, mapped_column
-from datetime import datetime, timezone
+from datetime import datetime
 from .payment import NegotiationStatus, NegotiationStrategy
 from ..database import Base
 
@@ -18,7 +18,7 @@ class Negotiation(Base):
     valid_from: Mapped[datetime | None] = mapped_column(DateTime, nullable=True)
     valid_until: Mapped[datetime | None] = mapped_column(DateTime, nullable=True)
     transcript_json: Mapped[dict | None] = mapped_column(JSON, nullable=True)
-    created_at: Mapped[datetime] = mapped_column(DateTime, default=lambda: datetime.now(timezone.utc))
+    created_at: Mapped[datetime] = mapped_column(DateTime, default=datetime.utcnow)
 
     # --- LLM Generated Fields ---
     llm_provider: Mapped[str | None] = mapped_column(String(50), nullable=True)

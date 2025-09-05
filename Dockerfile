@@ -1,3 +1,4 @@
+# Dockerfile
 FROM python:3.11-slim
 
 ENV PYTHONDONTWRITEBYTECODE=1 \
@@ -7,15 +8,16 @@ ENV PYTHONDONTWRITEBYTECODE=1 \
 RUN apt-get update && apt-get install -y --no-install-recommends \
     tesseract-ocr \
     poppler-utils \
- && rm -rf /var/lib/apt/lists/*
+  && rm -rf /var/lib/apt/lists/*
+
 WORKDIR /app
 
-# Copia desde el contexto actual
+# Instalar deps primero para aprovechar cache
 COPY requirements.txt /app/requirements.txt
 RUN pip install --no-cache-dir -r /app/requirements.txt
 
-# Copia el código
-COPY app /app/app
+# 👇 Copiamos TODO el repo (incluye alembic.ini, alembic/, etc.)
+COPY . /app
 
 # Carpeta para uploads
 RUN mkdir -p /data

@@ -1,7 +1,7 @@
 # app/models/provider_plan.py
 from sqlalchemy import Column, Integer, String, DateTime, Boolean, ForeignKey, Float, JSON, Enum
 from sqlalchemy.orm import relationship, Mapped, mapped_column
-from datetime import datetime, timezone
+from datetime import datetime  # 👈 sin timezone
 from ..database import Base
 from .payment import ServiceCategory
 
@@ -17,10 +17,10 @@ class ProviderPlan(Base):
     price: Mapped[float] = mapped_column(Float, nullable=False)
     currency: Mapped[str] = mapped_column(String(3), default="ARS", nullable=False)
 
-    details: Mapped[dict | None] = mapped_column(JSON) # e.g., {"speed_mbps": 500, "data_gb": 100}
+    details: Mapped[dict | None] = mapped_column(JSON)  # e.g., {"speed_mbps": 500, "data_gb": 100}
 
     active: Mapped[bool] = mapped_column(Boolean, default=True)
-    created_at: Mapped[datetime] = mapped_column(DateTime, default=lambda: datetime.now(timezone.utc))
-    updated_at: Mapped[datetime] = mapped_column(DateTime, default=lambda: datetime.now(timezone.utc), onupdate=lambda: datetime.now(timezone.utc))
+    created_at: Mapped[datetime] = mapped_column(DateTime, default=datetime.utcnow)  # 👈
+    updated_at: Mapped[datetime] = mapped_column(DateTime, default=datetime.utcnow, onupdate=datetime.utcnow)  # 👈
 
     provider = relationship("Provider")

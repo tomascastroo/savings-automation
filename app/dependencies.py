@@ -35,3 +35,5 @@ async def require_admin(user: User = Depends(get_current_user)) -> User:
     if user.id != 1:
         raise HTTPException(status_code=status.HTTP_403_FORBIDDEN, detail="Admin only")
     return user
+
+

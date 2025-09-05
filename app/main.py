@@ -7,6 +7,7 @@ from .api import bills as bills_router
 from .api import negotiations as negotiations_router
 from .api import dashboard as dashboard_router
 from .api import admin as admin_router
+from app.api import auth as auth_router
 
 configure_logging()
 
@@ -26,6 +27,7 @@ app.include_router(bills_router.router)
 app.include_router(negotiations_router.router)
 app.include_router(dashboard_router.router)
 app.include_router(admin_router.router)
+app.include_router(auth_router.router)
 
 @app.get("/health")
 async def health():

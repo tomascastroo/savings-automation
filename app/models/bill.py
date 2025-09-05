@@ -1,6 +1,6 @@
 from sqlalchemy import Column, Integer, String, DateTime, ForeignKey, Float, JSON
 from sqlalchemy.orm import relationship, Mapped, mapped_column
-from datetime import datetime, timezone
+from datetime import datetime
 from ..database import Base
 
 class Bill(Base):
@@ -13,4 +13,4 @@ class Bill(Base):
     currency: Mapped[str] = mapped_column(String(3), default="ARS")
     source_file_url: Mapped[str | None] = mapped_column(String(255), nullable=True)
     ocr_json: Mapped[dict | None] = mapped_column(JSON, nullable=True)
-    created_at: Mapped[datetime] = mapped_column(DateTime, default=lambda: datetime.now(timezone.utc))
+    created_at: Mapped[datetime] = mapped_column(DateTime, default=datetime.utcnow)

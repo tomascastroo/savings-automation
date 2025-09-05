@@ -5,6 +5,10 @@ from ..dependencies import get_db, get_current_user
 from ..services.auth import AuthService
 from ..schemas.payment import PaymentSetupRequest
 from ..models.payment import PaymentMethod, PaymentAuthorization
+from fastapi import APIRouter, Depends
+from ..dependencies import get_current_user
+from ..models.user import User
+
 
 router = APIRouter(prefix="/auth", tags=["auth"])
 
@@ -17,6 +21,11 @@ class LoginRequest(BaseModel):
     password: str
 
 auth_service = AuthService()
+
+
+@router.get("/me")
+async def me(current_user: User = Depends(get_current_user)):
+    return {"id": current_user.id, "email": current_user.email}
 
 @router.post("/signup")
 async def signup(body: SignupRequest, db: AsyncSession = Depends(get_db)):

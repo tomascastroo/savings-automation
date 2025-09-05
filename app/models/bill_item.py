@@ -1,7 +1,7 @@
 # app/models/bill_item.py
 from sqlalchemy import Column, Integer, String, DateTime, ForeignKey, Float
 from sqlalchemy.orm import relationship, Mapped, mapped_column
-from datetime import datetime, timezone
+from datetime import datetime
 from ..database import Base
 
 class BillItem(Base):
@@ -16,6 +16,6 @@ class BillItem(Base):
     quantity: Mapped[float | None] = mapped_column(Float)
     unit_price: Mapped[float | None] = mapped_column(Float)
 
-    created_at: Mapped[datetime] = mapped_column(DateTime, default=lambda: datetime.now(timezone.utc))
+    created_at: Mapped[datetime] = mapped_column(DateTime, default=datetime.utcnow)
 
     bill = relationship("Bill")

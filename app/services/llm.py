@@ -10,11 +10,14 @@ from tenacity import retry, stop_after_attempt, wait_exponential, RetryError
 
 from ..config import settings
 from ..llm.prompts import SYSTEM_PROMPT, USER_PROMPT_TEMPLATE
-from ..utils.logging import get_logger
+from ..utils.logging import logger
 from ..utils.redis_client import get_redis
 from ..services.rate_limit import enforce_rate_limit
 
-logger = get_logger(__name__)
+try:
+     logger = logger.bind(module="app.services.llm")  # si tu logger soporta .bind()
+except Exception:
+     pass
 
 @dataclass
 class NegotiationMessage:
