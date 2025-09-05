@@ -57,14 +57,25 @@ def _cleanup_storage():
     finally:
         shutil.rmtree(TEST_STORAGE, ignore_errors=True)
 
-def _make_jwt():
+def _make_jwt(user_id: int, is_admin: bool = False) -> str:
     import time, jwt
-    payload = {"sub": "1", "role": "admin", "exp": int(time.time()) + 3600}
+    payload = {"sub": str(user_id), "is_admin": is_admin, "exp": int(time.time()) + 3600}
     return jwt.encode(payload, os.environ["JWT_SECRET"], algorithm="HS256")
 
 @pytest.fixture
-def admin_auth_header():
-    return {"Authorization": f"Bearer {_make_jwt()}"}
+def admin_auth_header() -> dict[str, str]:
+    # Assuming user with ID 1 is an admin for test purposes
+    return {"Authorization": f"Bearer {_make_jwt(user_id=1, is_admin=True)}"}
+
+@pytest.fixture
+def user_auth_header() -> dict[str, str]:
+    # Assuming user with ID 2 is a regular user
+    return {"Authorization": f"Bearer {_make_jwt(user_id=2, is_admin=False)}"}
+
+@pytest.fixture
+def fake_pdf_bytes() -> bytes:
+    # A minimal valid PDF file content
+    return b"%PDF-1.0\n1 0 obj<</Type/Catalog/Pages 2 0 R>>endobj 2 0 obj<</Type/Pages/Count 1/Kids[3 0 R]>>endobj 3 0 obj<</Type/Page/MediaBox[0 0 3 3]>>endobj\nxref\n0 4\n0000000000 65535 f\n0000000010 00000 n\n0000000058 00000 n\n0000000106 00000 n\ntrailer<</Size 4/Root 1 0 R>>\nstartxref\n149\n%%EOF"
 
 @pytest.fixture(autouse=True)
 def mock_ocr(monkeypatch):
