@@ -12,8 +12,26 @@ from ..models.payment import Fee, PaymentStatus, Saving, NegotiationStatus
 from ..schemas.provider import ProviderCreate, ProviderUpdate, Provider as ProviderSchema
 from ..schemas.provider_plan import ProviderPlanCreate, ProviderPlanUpdate, ProviderPlan as ProviderPlanSchema
 from ..services.payment import refund_charge
+from ..config import settings
 
 router = APIRouter(prefix="/admin", tags=["admin"])
+
+# --- LLM Status ---
+class LlmStatusResponse(BaseModel):
+    enabled: bool
+    provider: str
+    model: str
+    dry_run: bool
+    # In a real system, we'd add circuit breaker status, last error, etc.
+
+@router.get("/llm/status", response_model=LlmStatusResponse)
+async def get_llm_status(_: str = Depends(require_admin)):
+    return {
+        "enabled": settings.llm_enable,
+        "provider": settings.llm_provider,
+        "model": settings.llm_model,
+        "dry_run": settings.llm_dry_run,
+    }
 
 # --- Provider Management ---
 

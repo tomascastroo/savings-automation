@@ -1,21 +1,19 @@
-"""Initial migration
+"""Initial migration with all tables
 
-Revision ID: 8dc7d9932e4e
+Revision ID: 110aca78edba
 Revises:
-Create Date: 2025-09-04 07:26:25.212002
+Create Date: 2025-09-05 22:38:58.019303
 
 """
-from typing import Sequence, Union
-
 from alembic import op
 import sqlalchemy as sa
-
+from sqlalchemy.dialects import postgresql
 
 # revision identifiers, used by Alembic.
-revision: str = '8dc7d9932e4e'
-down_revision: Union[str, None] = None
-branch_labels: Union[str, Sequence[str], None] = None
-depends_on: Union[str, Sequence[str], None] = None
+revision = '110aca78edba'
+down_revision = None
+branch_labels = None
+depends_on = None
 
 
 def upgrade() -> None:
@@ -62,6 +60,21 @@ def upgrade() -> None:
     sa.ForeignKeyConstraint(['user_id'], ['users.id'], ),
     sa.PrimaryKeyConstraint('id')
     )
+    op.create_table('provider_plans',
+    sa.Column('id', sa.Integer(), nullable=False),
+    sa.Column('provider_id', sa.Integer(), nullable=False),
+    sa.Column('name', sa.String(length=255), nullable=False),
+    sa.Column('category', sa.Enum('mobile', 'internet', 'tv', 'energy', 'water', 'gas', name='servicecategory'), nullable=False),
+    sa.Column('price', sa.Float(), nullable=False),
+    sa.Column('currency', sa.String(length=3), nullable=False),
+    sa.Column('details', sa.JSON(), nullable=True),
+    sa.Column('active', sa.Boolean(), nullable=False),
+    sa.Column('created_at', sa.DateTime(), nullable=False),
+    sa.Column('updated_at', sa.DateTime(), nullable=False),
+    sa.ForeignKeyConstraint(['provider_id'], ['providers.id'], ),
+    sa.PrimaryKeyConstraint('id')
+    )
+    op.create_index(op.f('ix_provider_plans_id'), 'provider_plans', ['id'], unique=False)
     op.create_table('services',
     sa.Column('id', sa.Integer(), nullable=False),
     sa.Column('user_id', sa.Integer(), nullable=False),
@@ -99,6 +112,18 @@ def upgrade() -> None:
     sa.ForeignKeyConstraint(['user_id'], ['users.id'], ),
     sa.PrimaryKeyConstraint('id')
     )
+    op.create_table('bill_items',
+    sa.Column('id', sa.Integer(), nullable=False),
+    sa.Column('bill_id', sa.Integer(), nullable=False),
+    sa.Column('description', sa.String(length=255), nullable=False),
+    sa.Column('amount', sa.Float(), nullable=False),
+    sa.Column('quantity', sa.Float(), nullable=True),
+    sa.Column('unit_price', sa.Float(), nullable=True),
+    sa.Column('created_at', sa.DateTime(), nullable=False),
+    sa.ForeignKeyConstraint(['bill_id'], ['bills.id'], ),
+    sa.PrimaryKeyConstraint('id')
+    )
+    op.create_index(op.f('ix_bill_items_id'), 'bill_items', ['id'], unique=False)
     op.create_table('negotiations',
     sa.Column('id', sa.Integer(), nullable=False),
     sa.Column('bill_id', sa.Integer(), nullable=False),
@@ -112,6 +137,16 @@ def upgrade() -> None:
     sa.Column('valid_until', sa.DateTime(), nullable=True),
     sa.Column('transcript_json', sa.JSON(), nullable=True),
     sa.Column('created_at', sa.DateTime(), nullable=False),
+    sa.Column('llm_provider', sa.String(length=50), nullable=True),
+    sa.Column('llm_model', sa.String(length=50), nullable=True),
+    sa.Column('llm_channel', sa.String(length=20), nullable=True),
+    sa.Column('llm_subject', sa.Text(), nullable=True),
+    sa.Column('llm_message', sa.Text(), nullable=True),
+    sa.Column('llm_new_amount', sa.Numeric(precision=12, scale=2), nullable=True),
+    sa.Column('llm_target_pct', sa.Numeric(precision=5, scale=4), nullable=True),
+    sa.Column('llm_confidence', sa.Numeric(precision=5, scale=4), nullable=True),
+    sa.Column('llm_risks', postgresql.JSONB(astext_type=Text()), nullable=True),
+    sa.Column('llm_meta', postgresql.JSONB(astext_type=Text()), nullable=True),
     sa.ForeignKeyConstraint(['bill_id'], ['bills.id'], ),
     sa.PrimaryKeyConstraint('id')
     )
@@ -134,7 +169,7 @@ def upgrade() -> None:
     sa.Column('saving_id', sa.Integer(), nullable=False),
     sa.Column('percent', sa.Float(), nullable=False),
     sa.Column('fee_amount', sa.Float(), nullable=False),
-    sa.Column('payment_status', sa.Enum('pending', 'paid', 'failed', name='paymentstatus'), nullable=False),
+    sa.Column('payment_status', sa.Enum('pending', 'paid', 'failed', 'refunded', name='paymentstatus'), nullable=False),
     sa.Column('payment_ref', sa.String(length=255), nullable=True),
     sa.Column('created_at', sa.DateTime(), nullable=False),
     sa.Column('paid_at', sa.DateTime(), nullable=True),
@@ -150,14 +185,17 @@ def downgrade() -> None:
     op.drop_table('fees')
     op.drop_table('savings')
     op.drop_table('negotiations')
+    op.drop_index(op.f('ix_bill_items_id'), table_name='bill_items')
+    op.drop_table('bill_items')
     op.drop_table('payment_authorizations')
     op.drop_table('bills')
     op.drop_table('services')
+    op.drop_index(op.f('ix_provider_plans_id'), table_name='provider_plans')
+    op.drop_table('provider_plans')
     op.drop_table('payment_methods')
     op.drop_table('audit_logs')
     op.drop_index(op.f('ix_users_id'), table_name='users')
     op.drop_index(op.f('ix_users_email'), table_name='users')
     op.drop_table('users')
     op.drop_table('providers')
-    # Enum types are dropped automatically when the tables that use them are dropped.
     # ### end Alembic commands ###

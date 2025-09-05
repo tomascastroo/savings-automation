@@ -4,6 +4,12 @@ from sqlalchemy import select
 from .database import get_async_session
 from .utils.security import decode_token
 from .models.user import User
+from .services.llm import LlmClient, OpenAiClient
+import httpx
+
+async def get_llm_client() -> LlmClient:
+    async with httpx.AsyncClient() as client:
+        yield OpenAiClient(http_client=client)
 
 async def get_db() -> AsyncSession:
     async for s in get_async_session():

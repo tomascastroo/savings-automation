@@ -1,4 +1,5 @@
-from sqlalchemy import Column, Integer, String, DateTime, ForeignKey, Float, JSON, Enum
+from sqlalchemy import Column, Integer, String, DateTime, ForeignKey, Float, JSON, Enum, Text, Numeric
+from sqlalchemy.dialects.postgresql import JSONB
 from sqlalchemy.orm import relationship, Mapped, mapped_column
 from datetime import datetime, timezone
 from .payment import NegotiationStatus, NegotiationStrategy
@@ -18,3 +19,15 @@ class Negotiation(Base):
     valid_until: Mapped[datetime | None] = mapped_column(DateTime, nullable=True)
     transcript_json: Mapped[dict | None] = mapped_column(JSON, nullable=True)
     created_at: Mapped[datetime] = mapped_column(DateTime, default=lambda: datetime.now(timezone.utc))
+
+    # --- LLM Generated Fields ---
+    llm_provider: Mapped[str | None] = mapped_column(String(50), nullable=True)
+    llm_model: Mapped[str | None] = mapped_column(String(50), nullable=True)
+    llm_channel: Mapped[str | None] = mapped_column(String(20), nullable=True)
+    llm_subject: Mapped[str | None] = mapped_column(Text, nullable=True)
+    llm_message: Mapped[str | None] = mapped_column(Text, nullable=True)
+    llm_new_amount: Mapped[float | None] = mapped_column(Numeric(12, 2), nullable=True)
+    llm_target_pct: Mapped[float | None] = mapped_column(Numeric(5, 4), nullable=True)
+    llm_confidence: Mapped[float | None] = mapped_column(Numeric(5, 4), nullable=True)
+    llm_risks: Mapped[dict | None] = mapped_column(JSONB, nullable=True)
+    llm_meta: Mapped[dict | None] = mapped_column(JSONB, nullable=True)

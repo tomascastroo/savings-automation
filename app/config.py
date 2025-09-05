@@ -25,6 +25,17 @@ class Settings(BaseSettings):
     payment_gateway: str = Field(default="stripe", pattern="^(stripe|mp)$")
     openai_api_key: str | None = None
 
+    # --- LLM Service ---
+    llm_enable: bool = False
+    llm_provider: str = "openai"
+    llm_model: str = "gpt-4.1-mini"
+    llm_timeout_s: int = 20
+    llm_max_tokens: int = 500
+    llm_temperature: float = 0.4
+    llm_lang: str = "es_AR"
+    llm_cache_ttl_s: int = 3600
+    llm_dry_run: bool = False
+
     # --- Application Settings ---
     storage_dir: str = Field(default="data")
     negotiation_rate_limit_days: int = 7
